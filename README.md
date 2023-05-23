@@ -1,5 +1,5 @@
 # intgen
-Intervention Generalization
+##*Intervention Generalization*
 
 Code corresponding to "Intervention Generalization, a View from Factor Graph Models".
 
