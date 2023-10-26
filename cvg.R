@@ -15,7 +15,7 @@ regimes <- seq(-2, 2, by = 0.5)
 trn_regimes <- -2:2
 tst_regimes <- setdiff(regimes, trn_regimes)
 
-# Weighted quantile function
+# Optionally weighted quantile function (from Tibshirani et al., 2019)
 weighted_quantile = function(v, prob, w = NULL, sorted = FALSE) {
   if (is.null(w)) {
     w <- rep(1, length(v))
@@ -40,19 +40,21 @@ mu_fn <- function(df, target_sigma) {
   tmp <- df[regime != target_sigma]
   lr <- tmp[, dnorm(x, mean = target_sigma) / dnorm(x, mean = regime)]
   w <- lr / sum(lr)
-  f <- lm(y ~ I(x^2) + x, tmp)
+  #f <- lm(y ~ I(x^2) + x, tmp)
+  f <- lm(y ~ I(x^2), tmp)
   out <- as.numeric(crossprod(w, fitted(f)))
   return(out)
 }
 
-# What if we weight the conformity scores themselves?
+# Simulation loop
 loop <- function(b, weighted = TRUE) {
   
   # Populate
   dat <- data.table(regime = rep(seq(-2, 2, by = 0.5), each = n_per_regime))
   n <- dat[, .N]
   dat[, x := rnorm(n, mean = regime)]
-  dat[, y := x^2 + x + rnorm(n, sd = 0.5)]
+  #dat[, y := x^2 + x + rnorm(n, sd = 0.5)]
+  dat[, y := x^2 + rnorm(n, sd = x^2)]
   dat[, set := fifelse(regime %in% trn_regimes, 'trn', 'tst')]
   n_trn <- dat[set == 'trn', .N]
   
@@ -73,7 +75,7 @@ loop <- function(b, weighted = TRUE) {
     return(tau)
   }
   tau_dat <- data.table(regime = tst_regimes)
-  tau_dat[, tau_hat := sapply(tst_regimes, tau_fn)]
+  tau_dat[, tau_hat := sapply(tst_regimes, function(k) tau_fn(k, weighted))]
   dat <- merge(dat, tau_dat, by = 'regime', all.x = TRUE)
   
   # Success?
